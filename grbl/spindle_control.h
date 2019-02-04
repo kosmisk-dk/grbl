@@ -29,13 +29,6 @@
 #define SPINDLE_STATE_CW       bit(0)
 #define SPINDLE_STATE_CCW      bit(1)
 
-// Default for variable spindle is PWM for rpm
-#ifdef VARIABLE_SPINDLE
-  #ifndef VARIABLE_SPINDLE_AS_SERVO
-    #define VARIABLE_SPINDLE_AS_PWM
-  #endif
-#endif
-
 // Initializes spindle pins and hardware PWM, if enabled.
 void spindle_init();
 

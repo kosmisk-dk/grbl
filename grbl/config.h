@@ -630,4 +630,13 @@
 // Paste default settings definitions here.
 
 
+
+// Default for variable spindle is PWM for rpm
+#ifdef VARIABLE_SPINDLE
+  #ifndef VARIABLE_SPINDLE_AS_SERVO
+    #define VARIABLE_SPINDLE_AS_PWM
+  #endif
+#endif
+
+
 #endif
