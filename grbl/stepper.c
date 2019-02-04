@@ -67,7 +67,7 @@ typedef struct {
   uint32_t steps[N_AXIS];
   uint32_t step_event_count;
   uint8_t direction_bits;
-  #ifdef VARIABLE_SPINDLE
+  #ifdef VARIABLE_SPINDLE_AS_PWM
     uint8_t is_pwm_rate_adjusted; // Tracks motions that require constant laser power/rate
   #endif
 } st_block_t;
@@ -86,7 +86,7 @@ typedef struct {
   #else
     uint8_t prescaler;      // Without AMASS, a prescaler is required to adjust for slow timing.
   #endif
-  #ifdef VARIABLE_SPINDLE
+  #ifdef VARIABLE_SPINDLE_AS_PWM
     uint8_t spindle_pwm;
   #endif
 } segment_t;
@@ -161,7 +161,7 @@ typedef struct {
   float accelerate_until; // Acceleration ramp end measured from end of block (mm)
   float decelerate_after; // Deceleration ramp start measured from end of block (mm)
 
-  #ifdef VARIABLE_SPINDLE
+  #ifdef VARIABLE_SPINDLE_AS_PWM
     float inv_rate;    // Used by PWM laser mode to speed up segment calculations.
     uint8_t current_spindle_pwm; 
   #endif
@@ -361,7 +361,7 @@ ISR(TIMER1_COMPA_vect)
         st.steps[Z_AXIS] = st.exec_block->steps[Z_AXIS] >> st.exec_segment->amass_level;
       #endif
 
-      #ifdef VARIABLE_SPINDLE
+      #ifdef VARIABLE_SPINDLE_AS_PWM
         // Set real-time spindle output as segment is loaded, just prior to the first step.
         spindle_set_speed(st.exec_segment->spindle_pwm);
       #endif
@@ -369,7 +369,7 @@ ISR(TIMER1_COMPA_vect)
     } else {
       // Segment buffer empty. Shutdown.
       st_go_idle();
-      #ifdef VARIABLE_SPINDLE
+      #ifdef VARIABLE_SPINDLE_AS_PWM
         // Ensure pwm is set properly upon completion of rate-controlled motion.
         if (st.exec_block->is_pwm_rate_adjusted) { spindle_set_speed(SPINDLE_PWM_OFF_VALUE); }
       #endif
@@ -663,7 +663,7 @@ void st_prep_buffer()
           prep.current_speed = sqrt(pl_block->entry_speed_sqr);
         }
         
-        #ifdef VARIABLE_SPINDLE
+        #ifdef VARIABLE_SPINDLE_AS_PWM
           // Setup laser mode variables. PWM rate adjusted motions will always complete a motion with the
           // spindle off. 
           st_prep_block->is_pwm_rate_adjusted = false;
@@ -768,7 +768,7 @@ void st_prep_buffer()
 				}
 			}
       
-      #ifdef VARIABLE_SPINDLE
+      #ifdef VARIABLE_SPINDLE_AS_PWM
         bit_true(sys.step_control, STEP_CONTROL_UPDATE_SPINDLE_PWM); // Force update whenever updating block.
       #endif
     }
@@ -877,7 +877,7 @@ void st_prep_buffer()
       }
     } while (mm_remaining > prep.mm_complete); // **Complete** Exit loop. Profile complete.
 
-    #ifdef VARIABLE_SPINDLE
+    #ifdef VARIABLE_SPINDLE_AS_PWM
       /* -----------------------------------------------------------------------------------
         Compute spindle speed PWM output for step segment
       */

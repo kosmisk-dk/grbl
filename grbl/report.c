@@ -203,7 +203,7 @@ void report_grbl_settings() {
   report_util_float_setting(27,settings.homing_pulloff,N_DECIMAL_SETTINGVALUE);
   report_util_float_setting(30,settings.rpm_max,N_DECIMAL_RPMVALUE);
   report_util_float_setting(31,settings.rpm_min,N_DECIMAL_RPMVALUE);
-  #ifdef VARIABLE_SPINDLE
+  #ifdef VARIABLE_SPINDLE_AS_PWM
     report_util_uint8_setting(32,bit_istrue(settings.flags,BITFLAG_LASER_MODE));
   #else
     report_util_uint8_setting(32,0);
@@ -340,7 +340,7 @@ void report_gcode_modes()
   printPgmString(PSTR(" F"));
   printFloat_RateValue(gc_state.feed_rate);
 
-  #ifdef VARIABLE_SPINDLE
+  #ifdef VARIABLE_SPINDLE_AS_PWM
     printPgmString(PSTR(" S"));
     printFloat(gc_state.spindle_speed,N_DECIMAL_RPMVALUE);
   #endif
@@ -373,7 +373,7 @@ void report_build_info(char *line)
   printString(line);
   report_util_feedback_line_feed();
   printPgmString(PSTR("[OPT:")); // Generate compile-time build option list
-  #ifdef VARIABLE_SPINDLE
+  #ifdef VARIABLE_SPINDLE_AS_PWM
     serial_write('V');
   #endif
   #ifdef USE_LINE_NUMBERS
@@ -550,7 +550,7 @@ void report_realtime_status()
 
   // Report realtime feed speed
   #ifdef REPORT_FIELD_CURRENT_FEED_SPEED
-    #ifdef VARIABLE_SPINDLE
+    #ifdef VARIABLE_SPINDLE_AS_PWM
       printPgmString(PSTR("|FS:"));
       printFloat_RateValue(st_get_realtime_rate());
       serial_write(',');

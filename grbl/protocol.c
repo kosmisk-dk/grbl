@@ -524,7 +524,7 @@ static void protocol_exec_rt_suspend()
 
   plan_block_t *block = plan_get_current_block();
   uint8_t restore_condition;
-  #ifdef VARIABLE_SPINDLE
+  #ifdef VARIABLE_SPINDLE_AS_PWM
     float restore_spindle_speed;
     if (block == NULL) {
       restore_condition = (gc_state.modal.spindle | gc_state.modal.coolant);
@@ -588,15 +588,17 @@ static void protocol_exec_rt_suspend()
                             (parking_target[PARKING_AXIS] < PARKING_TARGET) &&
                             bit_isfalse(settings.flags,BITFLAG_LASER_MODE)) {
             #endif
-              // Retract spindle by pullout distance. Ensure retraction motion moves away from
-              // the workpiece and waypoint motion doesn't exceed the parking target location.
-              if (parking_target[PARKING_AXIS] < retract_waypoint) {
-                parking_target[PARKING_AXIS] = retract_waypoint;
-                pl_data->feed_rate = PARKING_PULLOUT_RATE;
-                pl_data->condition |= (restore_condition & PL_COND_ACCESSORY_MASK); // Retain accessory state
-                pl_data->spindle_speed = restore_spindle_speed;
-                mc_parking_motion(parking_target, pl_data);
-              }
+	      #ifdef VARIABLE_SPINDLE_AS_PWM
+		// Retract spindle by pullout distance. Ensure retraction motion moves away from
+		// the workpiece and waypoint motion doesn't exceed the parking target location.
+		if (parking_target[PARKING_AXIS] < retract_waypoint) {
+		  parking_target[PARKING_AXIS] = retract_waypoint;
+		  pl_data->feed_rate = PARKING_PULLOUT_RATE;
+		  pl_data->condition |= (restore_condition & PL_COND_ACCESSORY_MASK); // Retain accessory state
+		  pl_data->spindle_speed = restore_spindle_speed;
+		  mc_parking_motion(parking_target, pl_data);
+		}
+	      #endif
 
               // NOTE: Clear accessory state after retract and after an aborted restore motion.
               pl_data->condition = (PL_COND_FLAG_SYSTEM_MOTION|PL_COND_FLAG_NO_FEED_OVERRIDE);
@@ -674,7 +676,9 @@ static void protocol_exec_rt_suspend()
                   // When in laser mode, ignore spindle spin-up delay. Set to turn on laser when cycle starts.
                   bit_true(sys.step_control, STEP_CONTROL_UPDATE_SPINDLE_PWM);
                 } else {
-                  spindle_set_state((restore_condition & (PL_COND_FLAG_SPINDLE_CW | PL_COND_FLAG_SPINDLE_CCW)), restore_spindle_speed);
+		  #ifdef VARIABLE_SPINDLE_AS_PWM
+                    spindle_set_state((restore_condition & (PL_COND_FLAG_SPINDLE_CW | PL_COND_FLAG_SPINDLE_CCW)), restore_spindle_speed);
+		  #endif
                   delay_sec(SAFETY_DOOR_SPINDLE_DELAY, DELAY_MODE_SYS_SUSPEND);
                 }
               }
@@ -739,7 +743,9 @@ static void protocol_exec_rt_suspend()
                 // When in laser mode, ignore spindle spin-up delay. Set to turn on laser when cycle starts.
                 bit_true(sys.step_control, STEP_CONTROL_UPDATE_SPINDLE_PWM);
               } else {
-                spindle_set_state((restore_condition & (PL_COND_FLAG_SPINDLE_CW | PL_COND_FLAG_SPINDLE_CCW)), restore_spindle_speed);
+		#ifdef VARIABLE_SPINDLE_AS_PWM
+                  spindle_set_state((restore_condition & (PL_COND_FLAG_SPINDLE_CW | PL_COND_FLAG_SPINDLE_CCW)), restore_spindle_speed);
+		#endif
               }
             }
             if (sys.spindle_stop_ovr & SPINDLE_STOP_OVR_RESTORE_CYCLE) {
@@ -751,7 +757,9 @@ static void protocol_exec_rt_suspend()
           // Handles spindle state during hold. NOTE: Spindle speed overrides may be altered during hold state.
           // NOTE: STEP_CONTROL_UPDATE_SPINDLE_PWM is automatically reset upon resume in step generator.
           if (bit_istrue(sys.step_control, STEP_CONTROL_UPDATE_SPINDLE_PWM)) {
-            spindle_set_state((restore_condition & (PL_COND_FLAG_SPINDLE_CW | PL_COND_FLAG_SPINDLE_CCW)), restore_spindle_speed);
+	    #ifdef VARIABLE_SPINDLE_AS_PWM
+              spindle_set_state((restore_condition & (PL_COND_FLAG_SPINDLE_CW | PL_COND_FLAG_SPINDLE_CCW)), restore_spindle_speed);
+	    #endif
             bit_false(sys.step_control, STEP_CONTROL_UPDATE_SPINDLE_PWM);
           }
         }

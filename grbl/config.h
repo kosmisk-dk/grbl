@@ -338,6 +338,11 @@
 // The hardware PWM output on pin D11 is required for variable spindle output voltages.
 #define VARIABLE_SPINDLE // Default enabled. Comment to disable.
 
+// If a variable spindle is enabled this too can be enabled, allowing for a rather crude resolution
+// servo to be attached to the Z-limit pin D11. $30 (rpm_max) and $31 (rpm_min) are used as degrees
+// to M3 (spindle on) and M5 (spindle off). These values are capped to a 0-180 degree range.
+// #define VARIABLE_SPINDLE_AS_SERVO // Default disabled. Uncomment to enable.
+
 // Used by variable spindle output only. This forces the PWM output to a minimum duty cycle when enabled.
 // The PWM pin will still read 0V when the spindle is disabled. Most users will not need this option, but
 // it may be useful in certain scenarios. This minimum PWM settings coincides with the spindle rpm minimum

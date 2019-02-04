@@ -80,6 +80,10 @@
   #error "SPINDLE_ENABLE_OFF_WITH_ZERO_SPEED may only be used with USE_SPINDLE_DIR_AS_ENABLE_PIN enabled"
 #endif
 
+#if defined(VARIABLE_SPINDLE_AS_SERVO) && !defined(VARIABLE_SPINDLE)
+  #error "VARIABLE_SPINDLE_AS_SERVO may only be used with VARIABLE_SPINDLE enabled"
+#endif
+
 #if defined(PARKING_ENABLE)
   #if defined(HOMING_FORCE_SET_ORIGIN)
     #error "HOMING_FORCE_SET_ORIGIN is not supported with PARKING_ENABLE at this time."

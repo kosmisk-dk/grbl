@@ -21,8 +21,24 @@
 
 #include "grbl.h"
 
+#ifdef VARIABLE_SPINDLE_AS_SERVO
+static uint8_t spindle_calc_angle(float degree);
 
-#ifdef VARIABLE_SPINDLE
+ISR(TIMER2_COMPB_vect)
+{
+  static uint8_t counter = -1;
+  if (++counter == 4) {
+    counter = 0;
+		if (SPINDLE_OCR_REGISTER != 0) {
+      SPINDLE_TCCRA_REGISTER = SPINDLE_TCCRA_INIT_MASK_ON;
+			return;
+		}
+  }
+  SPINDLE_TCCRA_REGISTER = SPINDLE_TCCRA_INIT_MASK_OFF;
+}
+#endif
+
+#ifdef VARIABLE_SPINDLE_AS_PWM
   static float pwm_gradient; // Precalulated value to speed up rpm to PWM conversions.
 #endif
 
@@ -34,7 +50,12 @@ void spindle_init()
     // Configure variable spindle PWM and enable pin, if requried. On the Uno, PWM and enable are
     // combined unless configured otherwise.
     SPINDLE_PWM_DDR |= (1<<SPINDLE_PWM_BIT); // Configure as PWM output pin.
-    SPINDLE_TCCRA_REGISTER = SPINDLE_TCCRA_INIT_MASK; // Configure PWM output compare timer
+    #ifdef VARIABLE_SPINDLE_AS_SERVO
+      SPINDLE_TRIGGER_REGISTER = SPINDLE_TRIGGER_VALUE;
+      SPINDLE_TIMSK_REGISTER = SPINDLE_TIMSK_INIT;
+    #else
+      SPINDLE_TCCRA_REGISTER = SPINDLE_TCCRA_INIT_MASK; // Configure PWM output compare timer
+    #endif
     SPINDLE_TCCRB_REGISTER = SPINDLE_TCCRB_INIT_MASK;
     #ifdef USE_SPINDLE_DIR_AS_ENABLE_PIN
       SPINDLE_ENABLE_DDR |= (1<<SPINDLE_ENABLE_BIT); // Configure as output pin.
@@ -42,7 +63,10 @@ void spindle_init()
       SPINDLE_DIRECTION_DDR |= (1<<SPINDLE_DIRECTION_BIT); // Configure as output pin.
     #endif
 
-    pwm_gradient = SPINDLE_PWM_RANGE/(settings.rpm_max-settings.rpm_min);
+    #ifndef VARIABLE_SPINDLE_AS_SERVO
+      pwm_gradient = SPINDLE_PWM_RANGE/(settings.rpm_max-settings.rpm_min);
+    #endif
+
 
   #else
 
@@ -67,10 +91,18 @@ uint8_t spindle_get_state()
 	 			if (bit_istrue(SPINDLE_ENABLE_PORT,(1<<SPINDLE_ENABLE_BIT))) { return(SPINDLE_STATE_CW); }
 	    #endif
     #else
-      if (SPINDLE_TCCRA_REGISTER & (1<<SPINDLE_COMB_BIT)) { // Check if PWM is enabled.
-        if (SPINDLE_DIRECTION_PORT & (1<<SPINDLE_DIRECTION_BIT)) { return(SPINDLE_STATE_CCW); }
-        else { return(SPINDLE_STATE_CW); }
-      }
+      #ifdef VARIABLE_SPINDLE_AS_SERVO
+        if (SPINDLE_OCR_REGISTER <= spindle_calc_angle(settings.rpm_min)) {
+          return(SPINDLE_STATE_DISABLE);
+        } else {
+          return(SPINDLE_STATE_CW);
+        }
+      #else
+        if (SPINDLE_TCCRA_REGISTER & (1<<SPINDLE_COMB_BIT)) { // Check if PWM is enabled.
+          if (SPINDLE_DIRECTION_PORT & (1<<SPINDLE_DIRECTION_BIT)) { return(SPINDLE_STATE_CCW); }
+          else { return(SPINDLE_STATE_CW); }
+        }
+      #endif
     #endif
 	#else
 		#ifdef INVERT_SPINDLE_ENABLE_PIN
@@ -92,7 +124,9 @@ uint8_t spindle_get_state()
 void spindle_stop()
 {
   #ifdef VARIABLE_SPINDLE
-    SPINDLE_TCCRA_REGISTER &= ~(1<<SPINDLE_COMB_BIT); // Disable PWM. Output voltage is zero.
+    #ifndef VARIABLE_SPINDLE_AS_SERVO
+      SPINDLE_TCCRA_REGISTER &= ~(1<<SPINDLE_COMB_BIT); // Disable PWM. Output voltage is zero.
+    #endif
     #ifdef USE_SPINDLE_DIR_AS_ENABLE_PIN
       #ifdef INVERT_SPINDLE_ENABLE_PIN
         SPINDLE_ENABLE_PORT |= (1<<SPINDLE_ENABLE_BIT);  // Set pin to high
@@ -110,7 +144,7 @@ void spindle_stop()
 }
 
 
-#ifdef VARIABLE_SPINDLE
+#ifdef VARIABLE_SPINDLE_AS_PWM
   // Sets spindle speed PWM output and enable pin, if configured. Called by spindle_set_state()
   // and stepper ISR. Keep routine small and efficient.
   void spindle_set_speed(uint8_t pwm_value)
@@ -226,7 +260,15 @@ void spindle_stop()
   if (state == SPINDLE_DISABLE) { // Halt or set spindle direction and rpm.
   
     #ifdef VARIABLE_SPINDLE
-      sys.spindle_speed = 0.0;
+      #ifdef VARIABLE_SPINDLE_AS_SERVO
+         if (rpm < 0.0) {
+           SPINDLE_OCR_REGISTER = 0;
+         } else {
+           spindle_set_angle(settings.rpm_min);
+         }
+      #else
+        sys.spindle_speed = 0.0;
+      #endif
     #endif
     spindle_stop();
   
@@ -241,11 +283,15 @@ void spindle_stop()
     #endif
   
     #ifdef VARIABLE_SPINDLE
-      // NOTE: Assumes all calls to this function is when Grbl is not moving or must remain off.
-      if (settings.flags & BITFLAG_LASER_MODE) { 
-        if (state == SPINDLE_ENABLE_CCW) { rpm = 0.0; } // TODO: May need to be rpm_min*(100/MAX_SPINDLE_SPEED_OVERRIDE);
-      }
-      spindle_set_speed(spindle_compute_pwm_value(rpm));
+      #ifdef VARIABLE_SPINDLE_AS_SERVO
+        spindle_set_angle(settings.rpm_max);
+      #else
+	// NOTE: Assumes all calls to this function is when Grbl is not moving or must remain off.
+	if (settings.flags & BITFLAG_LASER_MODE) { 
+	  if (state == SPINDLE_ENABLE_CCW) { rpm = 0.0; } // TODO: May need to be rpm_min*(100/MAX_SPINDLE_SPEED_OVERRIDE);
+	}
+	spindle_set_speed(spindle_compute_pwm_value(rpm));
+      #endif
     #endif
     #if (defined(USE_SPINDLE_DIR_AS_ENABLE_PIN) && \
         !defined(SPINDLE_ENABLE_OFF_WITH_ZERO_SPEED)) || !defined(VARIABLE_SPINDLE)
@@ -279,5 +325,21 @@ void spindle_stop()
     if (sys.state == STATE_CHECK_MODE) { return; }
     protocol_buffer_synchronize(); // Empty planner buffer to ensure spindle is set when programmed.
     _spindle_set_state(state);
+  }
+#endif
+
+#ifdef VARIABLE_SPINDLE_AS_SERVO
+  void spindle_set_angle(float degree)
+  {
+    SPINDLE_OCR_REGISTER = spindle_calc_angle(degree);
+  }
+
+  static uint8_t spindle_calc_angle(float degree)
+  {
+    if (degree < 0)
+      return 64;
+    if (degree > 180)
+      return 128;
+    return 64 + (uint8_t)(degree / 180 * 64);
   }
 #endif

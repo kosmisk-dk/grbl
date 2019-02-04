@@ -95,6 +95,12 @@
 #define PROGRAM_FLOW_COMPLETED_M2  2 // M2 (Do not alter value)
 #define PROGRAM_FLOW_COMPLETED_M30 30 // M30 (Do not alter value)
 
+#ifdef VARIABLE_SPINDLE_AS_SERVO
+  #define PROGRAM_FLOW_COMPLETED_SPINDLE_SPEED -1.0 // Special value (<0) to indicat switch off servo not just retract
+#else
+  #define PROGRAM_FLOW_COMPLETED_SPINDLE_SPEED 0.0
+#endif
+
 // Modal Group G5: Feed rate mode
 #define FEED_RATE_MODE_UNITS_PER_MIN  0 // G94 (Default: Must be zero)
 #define FEED_RATE_MODE_INVERSE_TIME   1 // G93 (Do not alter value)

@@ -135,12 +135,22 @@
   #define SPINDLE_OCR_REGISTER      OCR2A
   #define SPINDLE_COMB_BIT	        COM2A1
 
-  // Prescaled, 8-bit Fast PWM mode.
-  #define SPINDLE_TCCRA_INIT_MASK   ((1<<WGM20) | (1<<WGM21))  // Configures fast PWM mode.
-  // #define SPINDLE_TCCRB_INIT_MASK   (1<<CS20)               // Disable prescaler -> 62.5kHz
-  // #define SPINDLE_TCCRB_INIT_MASK   (1<<CS21)               // 1/8 prescaler -> 7.8kHz (Used in v0.9)
-  // #define SPINDLE_TCCRB_INIT_MASK   ((1<<CS21) | (1<<CS20)) // 1/32 prescaler -> 1.96kHz
-  #define SPINDLE_TCCRB_INIT_MASK      (1<<CS22)               // 1/64 prescaler -> 0.98kHz (J-tech laser)
+  #ifdef VARIABLE_SPINDLE_AS_SERVO
+    #define SPINDLE_TCCRA_INIT_MASK_OFF  ((1<<WGM20) | (1<<WGM21))                 // Fast PWM mode. No output
+    #define SPINDLE_TCCRA_INIT_MASK_ON   (SPINDLE_TCCRA_INIT_MASK_OFF | 1<<COM2A1) // Fast PWM mode. With output
+    #define SPINDLE_TCCRB_INIT_MASK      ((1<<CS22) | (1<<CS21))                   // 1/256 prescaler -> ~4.1ms every fifth pulse should be sent to servo
+    #define SPINDLE_TRIGGER_REGISTER     OCR2B
+    #define SPINDLE_TRIGGER_VALUE        (2.5 * 256 / 4)                           // 2.5 ms into 4ms cycle
+    #define SPINDLE_TIMSK_REGISTER       TIMSK2
+    #define SPINDLE_TIMSK_INIT           (1<<OCIE2B)
+  #else
+    // Prescaled, 8-bit Fast PWM mode.
+    #define SPINDLE_TCCRA_INIT_MASK   ((1<<WGM20) | (1<<WGM21))  // Configures fast PWM mode.
+    // #define SPINDLE_TCCRB_INIT_MASK   (1<<CS20)               // Disable prescaler -> 62.5kHz
+    // #define SPINDLE_TCCRB_INIT_MASK   (1<<CS21)               // 1/8 prescaler -> 7.8kHz (Used in v0.9)
+    // #define SPINDLE_TCCRB_INIT_MASK   ((1<<CS21) | (1<<CS20)) // 1/32 prescaler -> 1.96kHz
+    #define SPINDLE_TCCRB_INIT_MASK      (1<<CS22)               // 1/64 prescaler -> 0.98kHz (J-tech laser)
+  #endif
 
   // NOTE: On the 328p, these must be the same as the SPINDLE_ENABLE settings.
   #define SPINDLE_PWM_DDR	  DDRB

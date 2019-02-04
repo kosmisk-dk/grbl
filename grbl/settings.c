@@ -284,10 +284,24 @@ uint8_t settings_store_global_setting(uint8_t parameter, float value) {
       case 25: settings.homing_seek_rate = value; break;
       case 26: settings.homing_debounce_delay = int_value; break;
       case 27: settings.homing_pulloff = value; break;
-      case 30: settings.rpm_max = value; spindle_init(); break; // Re-initialize spindle rpm calibration
-      case 31: settings.rpm_min = value; spindle_init(); break; // Re-initialize spindle rpm calibration
+      case 30:
+        settings.rpm_max = value;
+        #ifdef VARIABLE_SPINDLE_AS_SERVO
+          spindle_set_angle(value); // force angle right now
+	#else
+          spindle_init(); // Re-initialize spindle rpm calibration
+        #endif
+	break;
+      case 31:
+        settings.rpm_min = value;
+        #ifdef VARIABLE_SPINDLE_AS_SERVO
+          spindle_set_angle(value); // force angle right now
+	#else
+          spindle_init(); // Re-initialize spindle rpm calibration
+        #endif
+	break;
       case 32:
-        #ifdef VARIABLE_SPINDLE
+        #ifdef VARIABLE_SPINDLE_AS_PWM
           if (int_value) { settings.flags |= BITFLAG_LASER_MODE; }
           else { settings.flags &= ~BITFLAG_LASER_MODE; }
         #else

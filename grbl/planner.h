@@ -79,7 +79,7 @@ typedef struct {
   float rapid_rate;             // Axis-limit adjusted maximum rate for this block direction in (mm/min)
   float programmed_rate;        // Programmed rate of this block (mm/min).
 
-  #ifdef VARIABLE_SPINDLE
+  #ifdef VARIABLE_SPINDLE_AS_PWM
     // Stored spindle speed data used by spindle overrides and resuming methods.
     float spindle_speed;    // Block spindle speed. Copied from pl_line_data.
   #endif

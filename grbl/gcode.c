@@ -916,7 +916,7 @@ uint8_t gc_execute_line(char *line)
   // [4. Set spindle speed ]:
   if ((gc_state.spindle_speed != gc_block.values.s) || bit_istrue(gc_parser_flags,GC_PARSER_LASER_FORCE_SYNC)) {
     if (gc_state.modal.spindle != SPINDLE_DISABLE) { 
-      #ifdef VARIABLE_SPINDLE
+      #ifdef VARIABLE_SPINDLE_AS_PWM
         if (bit_isfalse(gc_parser_flags,GC_PARSER_LASER_ISMOTION)) {
           if (bit_istrue(gc_parser_flags,GC_PARSER_LASER_DISABLE)) {
              spindle_sync(gc_state.modal.spindle, 0.0);
@@ -1119,7 +1119,7 @@ uint8_t gc_execute_line(char *line)
       if (sys.state != STATE_CHECK_MODE) {
         if (!(settings_read_coord_data(gc_state.modal.coord_select,gc_state.coord_system))) { FAIL(STATUS_SETTING_READ_FAIL); }
         system_flag_wco_change(); // Set to refresh immediately just in case something altered.
-        spindle_set_state(SPINDLE_DISABLE,0.0);
+        spindle_set_state(SPINDLE_DISABLE,PROGRAM_FLOW_COMPLETED_SPINDLE_SPEED);
         coolant_set_state(COOLANT_DISABLE);
       }
       report_feedback_message(MESSAGE_PROGRAM_END);

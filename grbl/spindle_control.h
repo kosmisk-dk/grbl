@@ -29,6 +29,12 @@
 #define SPINDLE_STATE_CW       bit(0)
 #define SPINDLE_STATE_CCW      bit(1)
 
+// Default for variable spindle is PWM for rpm
+#ifdef VARIABLE_SPINDLE
+  #ifndef VARIABLE_SPINDLE_AS_SERVO
+    #define VARIABLE_SPINDLE_AS_PWM
+  #endif
+#endif
 
 // Initializes spindle pins and hardware PWM, if enabled.
 void spindle_init();
@@ -47,13 +53,20 @@ uint8_t spindle_get_state();
   // Sets spindle running state with direction, enable, and spindle PWM.
   void spindle_set_state(uint8_t state, float rpm); 
   
-  // Sets spindle PWM quickly for stepper ISR. Also called by spindle_set_state().
-  // NOTE: 328p PWM register is 8-bit.
-  void spindle_set_speed(uint8_t pwm_value);
-  
-  // Computes 328p-specific PWM register value for the given RPM for quick updating.
-  uint8_t spindle_compute_pwm_value(float rpm);
-  
+  #ifdef VARIABLE_SPINDLE_AS_SERVO
+
+    // Sets the servo pwm to the value representing this angle
+    void spindle_set_angle(float degree);
+
+  #else
+    // Sets spindle PWM quickly for stepper ISR. Also called by spindle_set_state().
+    // NOTE: 328p PWM register is 8-bit.
+    void spindle_set_speed(uint8_t pwm_value);
+
+    // Computes 328p-specific PWM register value for the given RPM for quick updating.
+    uint8_t spindle_compute_pwm_value(float rpm);
+
+  #endif
 #else
   
   // Called by g-code parser when setting spindle state and requires a buffer sync.
